@@ -9,7 +9,7 @@ import (
 	"github.com/manuelpepe/interpreter/repl"
 )
 
-const option = 2
+const option = 1
 
 func main() {
 	switch option {

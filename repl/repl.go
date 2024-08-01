@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/manuelpepe/interpreter/eval"
 	"github.com/manuelpepe/interpreter/lexer"
 	"github.com/manuelpepe/interpreter/parser"
 )
@@ -32,9 +33,11 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		io.WriteString(out, prog.String())
-		io.WriteString(out, "\n")
-
+		res := eval.Eval(prog)
+		if res != nil {
+			io.WriteString(out, res.Inspect())
+			io.WriteString(out, "\n")
+		}
 	}
 }
 
