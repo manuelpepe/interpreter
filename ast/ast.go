@@ -44,6 +44,14 @@ func (p *Program) String() string {
 	return out.String()
 }
 
+func (p *Program) ChildNodes() []Node {
+	nodes := make([]Node, len(p.Statements))
+	for ix := range p.Statements {
+		nodes[ix] = p.Statements[ix]
+	}
+	return nodes
+}
+
 // LetStatement is used to define variables
 type LetStatement struct {
 	Token token.Token // token.LET
