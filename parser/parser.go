@@ -29,6 +29,7 @@ var precedences = map[token.TokenType]int{
 	token.MINUS:    SUM,
 	token.SLASH:    PRODUCT,
 	token.ASTERISK: PRODUCT,
+	token.LPAREN:   CALL,
 }
 
 type (
@@ -73,6 +74,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.NOT_EQ, p.parseInfixExpression)
 	p.registerInfix(token.LT, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
+	p.registerInfix(token.LPAREN, p.parseFunctionCall)
 
 	return p
 }
@@ -257,6 +259,35 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 	lit.Body = p.parseBlockStatement()
 
 	return lit
+}
+
+func (p *Parser) parseFunctionCall(left ast.Expression) ast.Expression {
+	call := &ast.CallExpression{
+		Token:     p.curToken,
+		Function:  left,
+		Arguments: make([]ast.Expression, 0),
+	}
+
+	if p.peekTokenIs(token.RPAREN) {
+		p.nextToken()
+		return call
+	}
+
+	p.nextToken()
+
+	call.Arguments = append(call.Arguments, p.parseExpression(LOWEST))
+
+	for p.peekTokenIs(token.COMMA) {
+		p.nextToken()
+		p.nextToken()
+		call.Arguments = append(call.Arguments, p.parseExpression(LOWEST))
+	}
+
+	if !p.expectPeek(token.RPAREN) {
+		return nil
+	}
+
+	return call
 }
 
 func (p *Parser) parseFunctionParameters() []*ast.Identifier {

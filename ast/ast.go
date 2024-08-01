@@ -211,9 +211,9 @@ func (fl *FunctionLiteral) TokenLiteral() string { return fl.Token.Literal }
 func (fl *FunctionLiteral) String() string {
 	var out bytes.Buffer
 
-	params := make([]string, 0)
-	for _, p := range fl.Parameters {
-		params = append(params, p.String())
+	params := make([]string, len(fl.Parameters))
+	for ix, p := range fl.Parameters {
+		params[ix] = p.String()
 	}
 
 	out.WriteString(fl.TokenLiteral())
@@ -221,6 +221,30 @@ func (fl *FunctionLiteral) String() string {
 	out.WriteString(strings.Join(params, ","))
 	out.WriteString(") ")
 	out.WriteString(fl.Body.String())
+
+	return out.String()
+}
+
+type CallExpression struct {
+	Token     token.Token // the ( token
+	Function  Expression  // Identifier or FunctionLiteral
+	Arguments []Expression
+}
+
+func (c *CallExpression) expressionNode()      {}
+func (c *CallExpression) TokenLiteral() string { return c.Token.Literal }
+func (c *CallExpression) String() string {
+	var out bytes.Buffer
+
+	args := make([]string, len(c.Arguments))
+	for ix, a := range c.Arguments {
+		args[ix] = a.String()
+	}
+
+	out.WriteString(c.Function.String())
+	out.WriteString("(")
+	out.WriteString(strings.Join(args, ", "))
+	out.WriteString(")")
 
 	return out.String()
 }
