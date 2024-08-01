@@ -15,11 +15,13 @@ func Eval(node ast.Node) object.Object {
 	switch node := node.(type) {
 	// Statements
 	case *ast.Program:
-		return evalStatements(node.Statements)
+		return evalProgram(node)
 	case *ast.ExpressionStatement:
 		return Eval(node.Expression)
 	case *ast.BlockStatement:
-		return evalStatements(node.Statements)
+		return evalBlockStatements(node)
+	case *ast.ReturnStatement:
+		return &object.ReturnValue{Value: Eval(node.ReturnValue)}
 
 	// Expressions
 	case *ast.IntegerLiteral:
@@ -134,10 +136,24 @@ func evalMinusOperatorExpression(right object.Object) object.Object {
 	return &object.Integer{Value: -value}
 }
 
-func evalStatements(statements []ast.Statement) object.Object {
+func evalProgram(p *ast.Program) object.Object {
 	var result object.Object
-	for _, s := range statements {
+	for _, s := range p.Statements {
 		result = Eval(s)
+		if ret, ok := result.(*object.ReturnValue); ok {
+			return ret.Value // unwrap first return value
+		}
+	}
+	return result
+}
+
+func evalBlockStatements(b *ast.BlockStatement) object.Object {
+	var result object.Object
+	for _, s := range b.Statements {
+		result = Eval(s)
+		if result != nil && result.Type() == object.RETURN_VALUE_OBJ {
+			return result // don't unwrap return values in block statements
+		}
 	}
 	return result
 }
