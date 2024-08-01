@@ -145,31 +145,31 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 		return nil
 	}
 
-	// TODO: We're skipping the expressions until we
-	// encounter a semicolon
-	for !p.curTokenIs(token.SEMICOLON) {
+	p.nextToken()
+	value := p.parseExpression(LOWEST)
+
+	if p.peekTokenIs(token.SEMICOLON) {
 		p.nextToken()
 	}
 
 	return &ast.LetStatement{
 		Token: tkn,
 		Name:  ident,
-		Value: nil,
+		Value: value,
 	}
 }
 
 func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
-	tkn := p.curToken
-	p.nextToken() // prepare for parsing expr
-	// TODO: We're skipping the expressions until we
-	// encounter a semicolon
-	for !p.curTokenIs(token.SEMICOLON) {
+	ret := &ast.ReturnStatement{Token: p.curToken}
+
+	p.nextToken()
+	ret.ReturnValue = p.parseExpression(LOWEST)
+
+	if p.peekTokenIs(token.SEMICOLON) {
 		p.nextToken()
 	}
-	return &ast.ReturnStatement{
-		Token:       tkn,
-		ReturnValue: nil,
-	}
+
+	return ret
 }
 
 func (p *Parser) parseBlockStatement() *ast.BlockStatement {
