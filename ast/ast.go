@@ -215,6 +215,7 @@ func (bs *BlockStatement) String() string {
 	out.WriteString("{ ")
 	for _, s := range bs.Statements {
 		out.WriteString(s.String())
+		out.WriteString(";")
 	}
 	out.WriteString(" }")
 	return out.String()

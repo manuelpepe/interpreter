@@ -60,8 +60,47 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return evalInfixExpression(node.Operator, left, right)
 	case *ast.IfExpression:
 		return evalIfExpression(node.Condition, node.Consequence, node.Alternative, env)
+	case *ast.FunctionLiteral:
+		return &object.Function{
+			Parameters: node.Parameters,
+			Body:       node.Body,
+			Env:        env,
+		}
+	case *ast.CallExpression:
+		return evalCallExpression(node.Arguments, node.Function, env)
+
 	}
 	return nil
+}
+
+func evalCallExpression(args []ast.Expression, funcExpr ast.Expression, env *object.Environment) object.Object {
+	evalFunc := Eval(funcExpr, env)
+	if isError(evalFunc) {
+		return evalFunc
+	}
+	if evalFunc.Type() != object.FUNCTION_OBJ {
+		return newError("expected function, got %s", evalFunc.Type())
+	}
+
+	fun := evalFunc.(*object.Function)
+	if len(fun.Parameters) != len(args) {
+		return newError("expected %d arguments, got %d", len(fun.Parameters), len(args))
+	}
+
+	funcEnv := fun.Env.Enclose()
+	for ix, arg := range args {
+		argVal := Eval(arg, env)
+		if isError(argVal) {
+			return argVal
+		}
+		funcEnv.Set(fun.Parameters[ix].Value, argVal)
+	}
+
+	ret := Eval(fun.Body, funcEnv)
+	if returnValue, ok := ret.(*object.ReturnValue); ok {
+		return returnValue.Value
+	}
+	return ret
 }
 
 func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
