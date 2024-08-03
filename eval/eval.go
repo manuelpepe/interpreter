@@ -69,48 +69,71 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			Env:        env,
 		}
 	case *ast.CallExpression:
-		return evalCallExpression(node.Arguments, node.Function, env)
+		args := evalExpressionList(node.Arguments, env)
+		if isError(args[0]) {
+			return args[0]
+		}
+		fn := Eval(node.Function, env)
+		if isError(fn) {
+			return fn
+		}
+		return applyFunction(fn, args)
 
 	}
 	return nil
 }
 
-func evalCallExpression(args []ast.Expression, funcExpr ast.Expression, env *object.Environment) object.Object {
-	evalFunc := Eval(funcExpr, env)
-	if isError(evalFunc) {
-		return evalFunc
-	}
-	if evalFunc.Type() != object.FUNCTION_OBJ {
-		return newError("expected function, got %s", evalFunc.Type())
-	}
-
-	fun := evalFunc.(*object.Function)
-	if len(fun.Parameters) != len(args) {
-		return newError("expected %d arguments, got %d", len(fun.Parameters), len(args))
-	}
-
-	funcEnv := fun.Env.Enclose()
-	for ix, arg := range args {
-		argVal := Eval(arg, env)
+func evalExpressionList(lst []ast.Expression, env *object.Environment) []object.Object {
+	out := make([]object.Object, len(lst))
+	for ix, item := range lst {
+		argVal := Eval(item, env)
 		if isError(argVal) {
-			return argVal
+			return []object.Object{argVal}
 		}
-		funcEnv.Set(fun.Parameters[ix].Value, argVal)
+		out[ix] = argVal
 	}
+	return out
+}
 
-	ret := Eval(fun.Body, funcEnv)
-	if returnValue, ok := ret.(*object.ReturnValue); ok {
+func extendFunctionEnv(fn *object.Function, args []object.Object) *object.Environment {
+	funcEnv := fn.Env.Enclose()
+	for ix, arg := range args {
+		funcEnv.Set(fn.Parameters[ix].Value, arg)
+	}
+	return funcEnv
+}
+
+func unwrapReturnValue(val object.Object) object.Object {
+	if returnValue, ok := val.(*object.ReturnValue); ok {
 		return returnValue.Value
 	}
-	return ret
+	return val
+}
+
+func applyFunction(fn object.Object, args []object.Object) object.Object {
+	switch fn := fn.(type) {
+	case *object.Builtin:
+		return fn.Fn.Do(args...)
+	case *object.Function:
+		if len(fn.Parameters) != len(args) {
+			return newError("expected %d arguments, got %d", len(fn.Parameters), len(args))
+		}
+		newEnv := extendFunctionEnv(fn, args)
+		ret := Eval(fn.Body, newEnv)
+		return unwrapReturnValue(ret)
+	default:
+		return newError("not a function: %s", fn.Type())
+	}
 }
 
 func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
-	val, ok := env.Get(node.Value)
-	if !ok {
-		return newError("identifier not found: %s", node.Value)
+	if val, ok := env.Get(node.Value); ok {
+		return val
 	}
-	return val
+	if builtin, ok := builtins[node.Value]; ok {
+		return builtin
+	}
+	return newError("identifier not found: %s", node.Value)
 }
 
 func evalIfExpression(cond ast.Expression, consequence *ast.BlockStatement, alternative *ast.BlockStatement, env *object.Environment) object.Object {
