@@ -27,6 +27,10 @@ if (5 < 10) {
 
 10 == 10;
 10 != 9;
+
+"a string"
+"a string
+with newlines"
 `
 	tests := []struct {
 		expType token.TokenType
@@ -105,6 +109,32 @@ if (5 < 10) {
 		{token.NOT_EQ, "!="},
 		{token.INT, "9"},
 		{token.SEMICOLON, ";"},
+		{token.STRING, "a string"},
+		{token.STRING, "a string\nwith newlines"},
+		{token.EOF, ""},
+	}
+
+	l := NewLexer(input)
+
+	for i, tt := range tests {
+		tok := l.NextToken()
+		exp := token.Token{Type: tt.expType, Literal: tt.expLit}
+		if tok != exp {
+			t.Fatalf(
+				"tests[%d] - tokentype wrong. expected=%q, got=%q",
+				i, exp, tok,
+			)
+		}
+	}
+}
+
+func TestUnclosedString(t *testing.T) {
+	input := `"unclosed`
+	tests := []struct {
+		expType token.TokenType
+		expLit  string
+	}{
+		{token.STRING, "unclosed"},
 		{token.EOF, ""},
 	}
 

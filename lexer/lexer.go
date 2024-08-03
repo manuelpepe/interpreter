@@ -75,6 +75,9 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.LT, l.ch)
 	case '>':
 		tok = newToken(token.GT, l.ch)
+	case '"':
+		tok.Literal = l.readString()
+		tok.Type = token.STRING
 	case 0:
 		tok.Literal = ""
 		tok.Type = token.EOF
@@ -95,6 +98,17 @@ func (l *Lexer) NextToken() token.Token {
 	l.readChar() // advance cursor after reading one char token
 
 	return tok
+}
+
+// readString reads an string starting from the current position (which must be the starting quote)
+// advancing it until it encounters the closing quote. it leaves the lexer in the position following the ending quote.
+func (l *Lexer) readString() string {
+	l.readChar()
+	pos := l.pos
+	for l.ch != '"' && l.ch != 0 {
+		l.readChar()
+	}
+	return l.input[pos:l.pos]
 }
 
 // readIdent reads an identifier starting from the current position, advancing it until it encounters a non-letter character.
