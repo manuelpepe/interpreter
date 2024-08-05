@@ -7,9 +7,8 @@ var builtins = map[string]*object.Builtin{
 }
 
 func checkArgs(n int, args []object.Object) (bool, *object.Error) {
-	if len(args) != 1 {
-		return false, newError("wrong number of arguments. got=%d, want=1",
-			len(args))
+	if len(args) != n {
+		return false, newError("wrong number of arguments. got=%d, want=%d", len(args), n)
 	}
 	return true, nil
 }
@@ -21,6 +20,8 @@ func (lb *LenBuiltin) Do(args ...object.Object) object.Object {
 		return err
 	}
 	switch arg := args[0].(type) {
+	case *object.Array:
+		return &object.Integer{Value: int64(len(arg.Items))}
 	case *object.String:
 		return &object.Integer{Value: int64(len(arg.Value))}
 	default:

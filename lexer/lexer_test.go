@@ -31,6 +31,9 @@ if (5 < 10) {
 "a string"
 "a string
 with newlines"
+
+[1, 2]
+lst[1]
 `
 	tests := []struct {
 		expType token.TokenType
@@ -111,6 +114,15 @@ with newlines"
 		{token.SEMICOLON, ";"},
 		{token.STRING, "a string"},
 		{token.STRING, "a string\nwith newlines"},
+		{token.LBRACKET, "["},
+		{token.INT, "1"},
+		{token.COMMA, ","},
+		{token.INT, "2"},
+		{token.RBRACKET, "]"},
+		{token.IDENT, "lst"},
+		{token.LBRACKET, "["},
+		{token.INT, "1"},
+		{token.RBRACKET, "]"},
 		{token.EOF, ""},
 	}
 

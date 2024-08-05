@@ -44,6 +44,22 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return &object.String{Value: node.Value}
 	case *ast.Boolean:
 		return evalBoolean(node.Value)
+	case *ast.ArrayLiteral:
+		items := evalExpressionList(node.Items, env)
+		if len(items) == 1 && isError(items[0]) {
+			return items[0]
+		}
+		return &object.Array{Items: items}
+	case *ast.IndexExpression:
+		arr := Eval(node.Left, env)
+		if isError(arr) {
+			return arr
+		}
+		ix := Eval(node.Index, env)
+		if isError(ix) {
+			return ix
+		}
+		return evalIndexExpression(arr, ix)
 	case *ast.PrefixExpression:
 		right := Eval(node.Right, env)
 		if isError(right) {
@@ -70,7 +86,7 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 	case *ast.CallExpression:
 		args := evalExpressionList(node.Arguments, env)
-		if isError(args[0]) {
+		if len(args) == 1 && isError(args[0]) {
 			return args[0]
 		}
 		fn := Eval(node.Function, env)
@@ -81,6 +97,21 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 
 	}
 	return nil
+}
+
+func evalIndexExpression(arr object.Object, ix object.Object) object.Object {
+	cArr, ok := arr.(*object.Array)
+	if !ok {
+		return newError("index operator not supported: %s", arr.Type())
+	}
+	cIx, ok := ix.(*object.Integer)
+	if !ok {
+		return newError("expected integer, got %T", ix)
+	}
+	if cIx.Value < 0 || int(cIx.Value) >= len(cArr.Items) {
+		return NULL
+	}
+	return cArr.Items[cIx.Value]
 }
 
 func evalExpressionList(lst []ast.Expression, env *object.Environment) []object.Object {

@@ -38,13 +38,7 @@ func TestEvalIntegerExpression(t *testing.T) {
 func TestStringLiteral(t *testing.T) {
 	input := `"Hello World!"`
 	evaluated := testEval(input)
-	str, ok := evaluated.(*object.String)
-	if !ok {
-		t.Fatalf("object is not String. got=%T (%+v)", evaluated, evaluated)
-	}
-	if str.Value != "Hello World!" {
-		t.Errorf("String has wrong value. got=%q", str.Value)
-	}
+	testStringLiteral(t, evaluated, "Hello World!")
 }
 
 func TestEvalBooleanExpression(t *testing.T) {
@@ -304,6 +298,10 @@ func TestBuiltinFunctions(t *testing.T) {
 		{`len("hello world")`, 11},
 		{`len(1)`, "argument to `len` not supported, got INTEGER"},
 		{`len("one", "two")`, "wrong number of arguments. got=2, want=1"},
+		{`len([])`, 0},
+		{`len([1])`, 1},
+		{`len([2, "asd", fn() {}, 2*2])`, 4},
+		{`len([[1,2,3], [4,5,6]])`, 2},
 	}
 	for _, tt := range tests {
 		evaluated := testEval(tt.input)
@@ -321,6 +319,93 @@ func TestBuiltinFunctions(t *testing.T) {
 				t.Errorf("wrong error message. expected=%q, got=%q",
 					expected, errObj.Message)
 			}
+		}
+	}
+}
+
+func TestArrayLiterals(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected []any
+	}{
+		{`[]`, []any{}},
+		{`[1, 2 * 2, 3 + 3]`, []any{1, 4, 6}},
+		{`[1, "asd", true]`, []any{1, "asd", true}},
+		{`[true, false]`, []any{true, false}},
+		{`["asd", "asd"]`, []any{"asd", "asd"}},
+		{`[[1,2]]`, []any{[]any{1, 2}}},
+	}
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		testArrayObject(t, evaluated, tt.expected)
+	}
+}
+
+func TestEmptyArrayLiteral(t *testing.T) {
+	input := "[]"
+	evaluated := testEval(input)
+	result, ok := evaluated.(*object.Array)
+	if !ok {
+		t.Fatalf("object is not Array. got=%T (%+v)", evaluated, evaluated)
+	}
+	if len(result.Items) != 0 {
+		t.Fatalf("array has wrong num of elements. got=%d", len(result.Items))
+	}
+}
+
+func TestArrayIndexExpressions(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected interface{}
+	}{
+		{
+			"[1, 2, 3][0]",
+			1,
+		},
+		{
+			"[1, 2, 3][1]",
+			2,
+		},
+		{
+			"[1, 2, 3][2]",
+			3,
+		},
+		{
+			"let i = 0; [1][i];",
+			1,
+		},
+		{
+			"[1, 2, 3][1 + 1];",
+			3,
+		},
+		{
+			"let myArray = [1, 2, 3]; myArray[2];",
+			3,
+		},
+		{
+			"let myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2];",
+			6,
+		},
+		{
+			"let myArray = [1, 2, 3]; let i = myArray[0]; myArray[i]",
+			2,
+		},
+		{
+			"[1, 2, 3][3]",
+			nil,
+		},
+		{
+			"[1, 2, 3][-1]",
+			nil,
+		},
+	}
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		integer, ok := tt.expected.(int)
+		if ok {
+			testIntegerObject(t, evaluated, int64(integer))
+		} else {
+			testNullObject(t, evaluated)
 		}
 	}
 }
@@ -361,10 +446,49 @@ func testBooleanObject(t *testing.T, obj object.Object, expected bool) bool {
 	return true
 }
 
+func testStringLiteral(t *testing.T, obj object.Object, exp string) bool {
+	str, ok := obj.(*object.String)
+	if !ok {
+		t.Fatalf("object is not String. got=%T (%+v)", obj, obj)
+		return false
+	}
+	if str.Value != exp {
+		t.Errorf("String has wrong value. got=%q", str.Value)
+		return false
+	}
+	return true
+}
+
 func testNullObject(t *testing.T, obj object.Object) bool {
 	if obj != NULL {
 		t.Errorf("object is not NULL. got=%T (%+v)", obj, obj)
 		return false
 	}
 	return true
+}
+
+func testArrayObject(t *testing.T, obj object.Object, expected []any) {
+	result, ok := obj.(*object.Array)
+	if !ok {
+		t.Fatalf("object is not Array. got=%T (%+v)", obj, obj)
+	}
+
+	if len(result.Items) != len(expected) {
+		t.Fatalf("array has wrong num of elements. got=%d", len(result.Items))
+	}
+
+	for ix, item := range result.Items {
+		switch exp := expected[ix].(type) {
+		case int:
+			testIntegerObject(t, item, int64(exp))
+		case bool:
+			testBooleanObject(t, item, exp)
+		case string:
+			testStringLiteral(t, item, exp)
+		case []any:
+			testArrayObject(t, item, exp)
+		case nil:
+			testNullObject(t, obj)
+		}
+	}
 }
