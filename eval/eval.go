@@ -50,6 +50,8 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			return items[0]
 		}
 		return &object.Array{Items: items}
+	case *ast.HashLiteral:
+		return evalHashLiteral(node, env)
 	case *ast.IndexExpression:
 		arr := Eval(node.Left, env)
 		if isError(arr) {
@@ -100,18 +102,31 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 }
 
 func evalIndexExpression(arr object.Object, ix object.Object) object.Object {
-	cArr, ok := arr.(*object.Array)
-	if !ok {
+	switch cArr := arr.(type) {
+	case *object.Array:
+		cIx, ok := ix.(*object.Integer)
+		if !ok {
+			return newError("expected integer, got %s", ix.Type())
+		}
+		if cIx.Value < 0 || int(cIx.Value) >= len(cArr.Items) {
+			return NULL
+		}
+		return cArr.Items[cIx.Value]
+	case *object.Hash:
+		cIx, ok := ix.(object.Hashable)
+		if !ok {
+			return newError("unusable as hash key: %s", ix.Type())
+		}
+		val, found := cArr.Pairs[cIx.HashKey()]
+		if !found {
+			return NULL
+		}
+		return val.Value
+	default:
 		return newError("index operator not supported: %s", arr.Type())
+
 	}
-	cIx, ok := ix.(*object.Integer)
-	if !ok {
-		return newError("expected integer, got %T", ix)
-	}
-	if cIx.Value < 0 || int(cIx.Value) >= len(cArr.Items) {
-		return NULL
-	}
-	return cArr.Items[cIx.Value]
+
 }
 
 func evalExpressionList(lst []ast.Expression, env *object.Environment) []object.Object {
@@ -124,6 +139,30 @@ func evalExpressionList(lst []ast.Expression, env *object.Environment) []object.
 		out[ix] = argVal
 	}
 	return out
+}
+
+func evalHashLiteral(node *ast.HashLiteral, env *object.Environment) object.Object {
+	hash := &object.Hash{Pairs: make(map[object.HashKey]object.HashPair)}
+	for keyExpr, valExpr := range node.Items {
+		key := Eval(keyExpr, env)
+		if isError(key) {
+			return key
+		}
+		hashedKey, ok := key.(object.Hashable)
+		if !ok {
+			return newError("object is not hashable, got=%T", hash)
+		}
+		val := Eval(valExpr, env)
+		if isError(val) {
+			return val
+		}
+		hash.Pairs[hashedKey.HashKey()] = object.HashPair{
+			Key:   key,
+			Value: val,
+		}
+	}
+	return hash
+
 }
 
 func extendFunctionEnv(fn *object.Function, args []object.Object) *object.Environment {

@@ -32,4 +32,13 @@ let sum = fn(arr) {
 
 inspect(sum([1, 2, 3, 4, 5]));
 
+
+
+let dict = {"a": 1, "b": 2}
+inspect(dict["a"])
+inspect(dict["b"])
+inspect(dict["c"])
+inspect(dict)
+
+
 return "end of program";

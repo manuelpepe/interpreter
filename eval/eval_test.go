@@ -192,6 +192,10 @@ func TestErrorHandling(t *testing.T) {
 			"foobar",
 			"identifier not found: foobar",
 		},
+		{
+			`{"name": "Monkey"}[fn(x) { x }];`,
+			"unusable as hash key: FUNCTION",
+		},
 	}
 	for _, tt := range tests {
 		evaluated := testEval(tt.input)
@@ -401,14 +405,95 @@ func TestArrayIndexExpressions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		evaluated := testEval(tt.input)
-		integer, ok := tt.expected.(int)
-		if ok {
-			testIntegerObject(t, evaluated, int64(integer))
-		} else {
-			testNullObject(t, evaluated)
-		}
+		testObject(t, evaluated, tt.expected)
 	}
 }
+
+func TestHashLiterals(t *testing.T) {
+	input := `
+let two = "two";
+{
+	"one": 10 - 9,
+	two: 1 + 1,
+	"thr" + "ee": 6 / 2,
+	4: 4,
+	true: 5,
+	false: 6,
+	"str": "some string",
+	"bool": true
+}`
+
+	evaluated := testEval(input)
+	result, ok := evaluated.(*object.Hash)
+	if !ok {
+		t.Fatalf("Eval didn't return Hash. got=%T (%+v)", evaluated, evaluated)
+	}
+
+	expected := map[object.HashKey]any{
+		(&object.String{Value: "one"}).HashKey():   1,
+		(&object.String{Value: "two"}).HashKey():   2,
+		(&object.String{Value: "three"}).HashKey(): 3,
+		(&object.Integer{Value: 4}).HashKey():      4,
+		TRUE.HashKey():                             5,
+		FALSE.HashKey():                            6,
+		(&object.String{Value: "str"}).HashKey():   "some string",
+		(&object.String{Value: "bool"}).HashKey():  true,
+	}
+
+	if len(result.Pairs) != len(expected) {
+		t.Fatalf("Hash has wrong num of pairs. got=%d", len(result.Pairs))
+	}
+
+	for expectedKey, expectedValue := range expected {
+		pair, ok := result.Pairs[expectedKey]
+		if !ok {
+			t.Errorf("no pair for given key in Pairs")
+		}
+		testObject(t, pair.Value, expectedValue)
+	}
+}
+
+func TestHashIndexExpressions(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected interface{}
+	}{
+		{
+			`{"foo": 5}["foo"]`,
+			5,
+		},
+		{
+			`{"foo": 5}["bar"]`,
+			nil,
+		},
+		{
+			`let key = "foo"; {"foo": 5}[key]`,
+			5,
+		},
+		{
+			`{}["foo"]`,
+			nil,
+		},
+		{
+			`{5: 5}[5]`,
+			5,
+		},
+		{
+			`{true: 5}[true]`,
+			5,
+		},
+		{
+			`{false: 5}[false]`,
+			5,
+		},
+	}
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		testObject(t, evaluated, tt.expected)
+	}
+}
+
+///////// HELPERS ////////
 
 func testEval(input string) object.Object {
 	l := lexer.NewLexer(input)
@@ -478,17 +563,23 @@ func testArrayObject(t *testing.T, obj object.Object, expected []any) {
 	}
 
 	for ix, item := range result.Items {
-		switch exp := expected[ix].(type) {
-		case int:
-			testIntegerObject(t, item, int64(exp))
-		case bool:
-			testBooleanObject(t, item, exp)
-		case string:
-			testStringLiteral(t, item, exp)
-		case []any:
-			testArrayObject(t, item, exp)
-		case nil:
-			testNullObject(t, obj)
-		}
+		testObject(t, item, expected[ix])
+	}
+}
+
+func testObject(t *testing.T, obj object.Object, expected any) {
+	switch exp := expected.(type) {
+	case int:
+		testIntegerObject(t, obj, int64(exp))
+	case bool:
+		testBooleanObject(t, obj, exp)
+	case string:
+		testStringLiteral(t, obj, exp)
+	case []any:
+		testArrayObject(t, obj, exp)
+	case nil:
+		testNullObject(t, obj)
+	default:
+		t.Fatalf("unkown expected type for %T, got %T", obj, expected)
 	}
 }

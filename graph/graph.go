@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"strings"
 
 	"github.com/dominikbraun/graph"
 	"github.com/dominikbraun/graph/draw"
@@ -35,7 +36,7 @@ func Graph(src string, dst string) {
 }
 
 func doGraph(prog *ast.Program) graph.Graph[int, int] {
-	g := graph.New(graph.IntHash, graph.Directed(), graph.Acyclic(), graph.Rooted())
+	g := graph.New(graph.IntHash, graph.Directed(), graph.Acyclic())
 	offset := 0
 	id := 0
 
@@ -55,7 +56,7 @@ func graphNode(g graph.Graph[int, int], node ast.Node, parent int, offset int) i
 	id := 1 + offset
 	offset += 1
 
-	nodestr := fmt.Sprintf("%s\n%s", reflect.TypeOf(node).String(), node.String())
+	nodestr := fmt.Sprintf("%s\n%s", reflect.TypeOf(node).String(), strings.ReplaceAll(node.String(), "\"", "\""))
 	g.AddVertex(id, graph.VertexAttribute("label", nodestr))
 
 	g.AddEdge(parent, id)

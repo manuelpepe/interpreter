@@ -359,3 +359,33 @@ func (ie *IndexExpression) String() string {
 	out.WriteString("])")
 	return out.String()
 }
+
+type HashLiteral struct {
+	Token token.Token // the '{' token
+	Items map[Expression]Expression
+}
+
+func (hl *HashLiteral) ChildNodes() []Node {
+	nodes := make([]Node, 0)
+	for key, val := range hl.Items {
+		nodes = append(nodes, key)
+		nodes = append(nodes, val)
+	}
+	return nodes
+}
+func (hl *HashLiteral) expressionNode()      {}
+func (hl *HashLiteral) TokenLiteral() string { return hl.Token.Literal }
+func (hl *HashLiteral) String() string {
+	var out bytes.Buffer
+
+	items := make([]string, 0)
+	for key, val := range hl.Items {
+		items = append(items, fmt.Sprintf("%s: %s", key.String(), val.String()))
+	}
+
+	out.WriteString("[")
+	out.WriteString(strings.Join(items, ", "))
+	out.WriteString("]")
+
+	return out.String()
+}

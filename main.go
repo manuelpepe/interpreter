@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -17,16 +18,36 @@ import (
 const option = 3
 
 func main() {
-	switch option {
-	case 1:
-		doREPL()
-	case 2:
-		doGraph()
-	case 3:
-		doRunFile(os.Args[1])
-	default:
-		panic("unknown option")
+	flags := struct {
+		graph *string
+		out   *string
+
+		run *string
+	}{
+		graph: flag.String("graph", "", "produce graph"),
+		out:   flag.String("out", "./ast.gv", "output file for graph"),
+
+		run: flag.String("run", "", "execute file"),
 	}
+
+	flag.Parse()
+
+	if flags.graph != nil && *flags.graph != "" {
+		doGraph(*flags.graph, *flags.out)
+	} else if flags.run != nil && *flags.run != "" {
+		doRunFile(*flags.run)
+	} else {
+		doREPL()
+	}
+}
+
+func doREPL() {
+	user, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Hello %s!\n", user.Username)
+	repl.Start(os.Stdin, os.Stdout)
 }
 
 func doRunFile(srcFile string) {
@@ -52,19 +73,15 @@ func doRunFile(srcFile string) {
 	}
 }
 
-func doREPL() {
-	user, err := user.Current()
+func doGraph(src string, dst string) {
+	data, err := os.ReadFile(src)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stdout, "Error opening file: %v\n", err)
+		return
 	}
-	fmt.Printf("Hello %s!\n", user.Username)
-	repl.Start(os.Stdin, os.Stdout)
-}
 
-func doGraph() {
 	graph.Graph(
-		"let a = fn(a,b,c) { return fn() { return 3 + 1 }() }; let b = a",
-		"./ast.gv",
+		string(data),
+		dst,
 	)
-
 }

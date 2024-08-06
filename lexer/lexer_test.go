@@ -34,6 +34,7 @@ with newlines"
 
 [1, 2]
 lst[1]
+{"foo": "bar"}
 `
 	tests := []struct {
 		expType token.TokenType
@@ -123,6 +124,11 @@ lst[1]
 		{token.LBRACKET, "["},
 		{token.INT, "1"},
 		{token.RBRACKET, "]"},
+		{token.LBRACE, "{"},
+		{token.STRING, "foo"},
+		{token.COLON, ":"},
+		{token.STRING, "bar"},
+		{token.RBRACE, "}"},
 		{token.EOF, ""},
 	}
 
