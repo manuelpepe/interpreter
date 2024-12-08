@@ -1,6 +1,6 @@
 # Monkey Language
 
-This code follows the books [Writing An Interpreter In Go](https://interpreterbook.com/) and [Writing A Compiler In Go](https://compilerbook.com/) from Thorsten Ball. It also includes the Macro System implementation from the post [The Lost Chapter: A Macro System For Monkey](https://interpreterbook.com/lost/) from the same author.
+This code follows the books [Writing An Interpreter In Go](https://interpreterbook.com/) ~and [Writing A Compiler In Go](https://compilerbook.com/) from Thorsten Ball. It also includes the Macro System implementation from the post [The Lost Chapter: A Macro System For Monkey](https://interpreterbook.com/lost/) from the same author.~ (not yet)
 
 This version differs from the original author's code in a few places that were convenient for me. For example, I've added a small utility that generates DOT files of the generated AST for easier visualization.
 
